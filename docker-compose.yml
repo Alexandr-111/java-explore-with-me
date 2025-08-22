@@ -1,14 +1,84 @@
 services:
   stats-server:
+    build:
+      context: ./statistics-service/stat-service  # путь к Dockerfile
+      dockerfile: Dockerfile
+    image: stats-server
+    container_name: stats-server
+    ports:
+      - "7070:7070"
+    depends_on:
+      #- ewm-service
+      - stats-db
+    environment:
+      - SPRING_DATASOURCE_USERNAME=user
+      - SPRING_DATASOURCE_PASSWORD=password
+      - TZ=UTC
+      - SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE=UTC
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://stats-db:5432/stats_database?timeZone=UTC
+      - SPRING_JPA_PROPERTIES_JAKARTA_PERSISTENCE_JDBC_TIME_ZONE=UTC
+      - LOGGING_LEVEL_ORG_HIBERNATE=INFO
+      - LOGGING_LEVEL_ORG_POSTGRES=INFO
+    networks:
+      - explore-net
+
+  client-stat:
+    build:
+      context: ./statistics-service/client-stat-service  # путь к Dockerfile
+      dockerfile: Dockerfile
+    image: client-stat
+    container_name: client-stat
     ports:
       - "9090:9090"
+    depends_on:
+      - stats-server
+    environment:
+      - STATS_SERVER_URL=http://stats-server:7070
+      - TZ=UTC
+      - SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE=UTC
+      - SPRING_JPA_PROPERTIES_JAKARTA_PERSISTENCE_JDBC_TIME_ZONE=UTC
+      - LOGGING_LEVEL_ORG_HIBERNATE=INFO
+      - LOGGING_LEVEL_ORG_POSTGRES=INFO
+    networks:
+      - explore-net
 
   stats-db:
     image: postgres:16.1
+    container_name: stats-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: stats_database
+      TZ: UTC
+      PGTZ: UTC
+    networks:
+      - explore-net
 
-  ewm-service:
-    ports:
-      - "8080:8080"
+#  ewm-service:
+#    build:
+#      context: ./main-service  # путь к Dockerfile для ewm-service
+#      dockerfile: Dockerfile
+#    image: ewm-service
+#    container_name: ewm-service
+#    ports:
+#      - "8080:8080"
+#    environment:
+#      STATS_SERVER_URL: http://server:9090
+#    depends_on:
+#      - ewm-db
+#    networks:
+#      - explore-net
 
-  ewm-db:
-    image: postgres:16.1
+#  ewm-db:
+#    image: postgres:16.1
+#    container_name: ewm-db
+#    environment:
+#      POSTGRES_USER: ewm_user
+#      POSTGRES_PASSWORD: ewm_password
+#      POSTGRES_DB: ewm_db
+#    networks:
+#      - explore-net
+
+networks:
+  explore-net:
+    driver: bridge
