@@ -48,9 +48,10 @@ public class StatsClientController {
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
             @RequestParam(required = false) List<String> uris,
-            @RequestParam(required = false, defaultValue = "false") boolean unique) {
+            @RequestParam(defaultValue = "false") boolean unique) {
         log.debug("StatsController. Запрос статистики. Получены объекты start {}, end {}, uris {} и unique {}",
                 start, end, uris, unique);
+
         return statsClient.fetchStats(start, end, uris, unique);
     }
 }

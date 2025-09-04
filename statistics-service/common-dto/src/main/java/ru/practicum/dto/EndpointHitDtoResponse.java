@@ -13,11 +13,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class EndpointHitDtoResponse {
-
-    private Long id;     // Идентификатор записи
-    private String app;  // Идентификатор сервиса
-    private String uri;  // URI для которого был осуществлен запрос
-    private String ip;   // IP-адрес пользователя
+    private Long id;
+    private String app;
+    private String uri;
+    private String ip;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime timestamp;
 }

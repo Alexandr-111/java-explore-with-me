@@ -8,8 +8,14 @@ services:
     ports:
       - "7070:7070"
     depends_on:
-      #- ewm-service
-      - stats-db
+      stats-db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:7070/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
     environment:
       - SPRING_DATASOURCE_USERNAME=user
       - SPRING_DATASOURCE_PASSWORD=password
@@ -17,8 +23,6 @@ services:
       - SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE=UTC
       - SPRING_DATASOURCE_URL=jdbc:postgresql://stats-db:5432/stats_database?timeZone=UTC
       - SPRING_JPA_PROPERTIES_JAKARTA_PERSISTENCE_JDBC_TIME_ZONE=UTC
-      - LOGGING_LEVEL_ORG_HIBERNATE=INFO
-      - LOGGING_LEVEL_ORG_POSTGRES=INFO
     networks:
       - explore-net
 
@@ -31,14 +35,13 @@ services:
     ports:
       - "9090:9090"
     depends_on:
-      - stats-server
+      stats-server:
+        condition: service_healthy
     environment:
       - STATS_SERVER_URL=http://stats-server:7070
       - TZ=UTC
       - SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE=UTC
       - SPRING_JPA_PROPERTIES_JAKARTA_PERSISTENCE_JDBC_TIME_ZONE=UTC
-      - LOGGING_LEVEL_ORG_HIBERNATE=INFO
-      - LOGGING_LEVEL_ORG_POSTGRES=INFO
     networks:
       - explore-net
 
@@ -51,33 +54,78 @@ services:
       POSTGRES_DB: stats_database
       TZ: UTC
       PGTZ: UTC
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user -d stats_database" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - explore-net
 
-#  ewm-service:
-#    build:
-#      context: ./main-service  # путь к Dockerfile для ewm-service
-#      dockerfile: Dockerfile
-#    image: ewm-service
-#    container_name: ewm-service
-#    ports:
-#      - "8080:8080"
-#    environment:
-#      STATS_SERVER_URL: http://server:9090
-#    depends_on:
-#      - ewm-db
-#    networks:
-#      - explore-net
+  ewm-gateway:
+    build:
+      context: ./main-service/gateway  # путь к Dockerfile
+      dockerfile: Dockerfile
+    image: ewm-gateway
+    container_name: ewm-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      ewm-server:
+        condition: service_healthy
+    environment:
+      - EWM_SERVER_URL=http://ewm-server:6060
+      - TZ=UTC
+      - SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE=UTC
+      - SPRING_JPA_PROPERTIES_JAKARTA_PERSISTENCE_JDBC_TIME_ZONE=UTC
+    networks:
+      - explore-net
 
-#  ewm-db:
-#    image: postgres:16.1
-#    container_name: ewm-db
-#    environment:
-#      POSTGRES_USER: ewm_user
-#      POSTGRES_PASSWORD: ewm_password
-#      POSTGRES_DB: ewm_db
-#    networks:
-#      - explore-net
+  ewm-server:
+    build:
+      context: ./main-service/main-server  # путь к Dockerfile
+      dockerfile: Dockerfile
+    image: ewm-server
+    container_name: ewm-server
+    ports:
+      - "6060:6060"
+    depends_on:
+      ewm-db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:6060/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    environment:
+      - SPRING_DATASOURCE_USERNAME=ewm_user
+      - SPRING_DATASOURCE_PASSWORD=ewm_password
+      - TZ=UTC
+      - SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE=UTC
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-db:5432/ewm_database?timeZone=UTC
+      - SPRING_JPA_PROPERTIES_JAKARTA_PERSISTENCE_JDBC_TIME_ZONE=UTC
+    networks:
+      - explore-net
+
+  ewm-db:
+    image: postgres:16.1
+    container_name: ewm-db
+    environment:
+      POSTGRES_USER: ewm_user
+      POSTGRES_PASSWORD: ewm_password
+      POSTGRES_DB: ewm_database
+      TZ: UTC
+      PGTZ: UTC
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ewm_user -d ewm_database" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - explore-net
 
 networks:
   explore-net:
