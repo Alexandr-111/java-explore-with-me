@@ -19,7 +19,7 @@ public class PublicCategoryClient extends BaseClient {
     private static final String PATH_WITH_ID = "/categories/{catId}";
 
     @Autowired
-    public PublicCategoryClient(@Value("${ewm-server.url}") String serverUrl, RestTemplate restTemplate) {
+    public PublicCategoryClient(@Value("${ewm-service.url}") String serverUrl, RestTemplate restTemplate) {
         super(restTemplate);
         this.serverUrl = serverUrl;
     }

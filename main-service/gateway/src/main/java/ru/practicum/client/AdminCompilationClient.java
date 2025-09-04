@@ -17,7 +17,7 @@ public class AdminCompilationClient extends BaseClient {
     private static final String PATH_WITH_ID = "/admin/compilations/{compId}";
 
     @Autowired
-    public AdminCompilationClient(@Value("${ewm-server.url}") String serverUrl, RestTemplate restTemplate) {
+    public AdminCompilationClient(@Value("${ewm-service.url}") String serverUrl, RestTemplate restTemplate) {
         super(restTemplate);
         this.serverUrl = serverUrl;
     }

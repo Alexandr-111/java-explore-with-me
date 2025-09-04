@@ -20,7 +20,7 @@ public class AdminUserClient extends BaseClient {
     private static final String PATH_WITH_ID = "/admin/users/{userId}";
 
     @Autowired
-    public AdminUserClient(@Value("${ewm-server.url}") String serverUrl, RestTemplate restTemplate) {
+    public AdminUserClient(@Value("${ewm-service.url}") String serverUrl, RestTemplate restTemplate) {
         super(restTemplate);
         this.serverUrl = serverUrl;
     }

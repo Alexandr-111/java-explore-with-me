@@ -20,7 +20,7 @@ public class AdminEventClient extends BaseClient {
     private static final String PATH_WITH_ID = "/admin/events/{eventId}";
 
     @Autowired
-    public AdminEventClient(@Value("${ewm-server.url}") String serverUrl, RestTemplate restTemplate) {
+    public AdminEventClient(@Value("${ewm-service.url}") String serverUrl, RestTemplate restTemplate) {
         super(restTemplate);
         this.serverUrl = serverUrl;
     }

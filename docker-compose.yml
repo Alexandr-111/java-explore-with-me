@@ -72,22 +72,22 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      ewm-server:
+      ewm-service:
         condition: service_healthy
     environment:
-      - EWM_SERVER_URL=http://ewm-server:6060
+      - EWM_SERVICE_URL=http://ewm-service:6060
       - TZ=UTC
       - SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE=UTC
       - SPRING_JPA_PROPERTIES_JAKARTA_PERSISTENCE_JDBC_TIME_ZONE=UTC
     networks:
       - explore-net
 
-  ewm-server:
+  ewm-service:
     build:
       context: ./main-service/main-server  # путь к Dockerfile
       dockerfile: Dockerfile
-    image: ewm-server
-    container_name: ewm-server
+    image: ewm-service
+    container_name: ewm-service
     ports:
       - "6060:6060"
     depends_on:

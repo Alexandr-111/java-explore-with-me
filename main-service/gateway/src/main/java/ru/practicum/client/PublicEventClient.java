@@ -21,7 +21,7 @@ public class PublicEventClient extends BaseClient {
     private static final String EVENT_BY_ID_PATH = "/events/{id}";
 
     @Autowired
-    public PublicEventClient(@Value("${ewm-server.url}") String serverUrl, RestTemplate restTemplate) {
+    public PublicEventClient(@Value("${ewm-service.url}") String serverUrl, RestTemplate restTemplate) {
         super(restTemplate);
         this.serverUrl = serverUrl;
     }

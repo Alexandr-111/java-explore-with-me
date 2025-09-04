@@ -26,7 +26,7 @@ public class PrivateEventClient extends BaseClient {
     private static final String EVENT_REQUESTS_PATH = "/users/{userId}/events/{eventId}/requests";
 
     @Autowired
-    public PrivateEventClient(@Value("${ewm-server.url}") String serverUrl, RestTemplate restTemplate) {
+    public PrivateEventClient(@Value("${ewm-service.url}") String serverUrl, RestTemplate restTemplate) {
         super(restTemplate);
         this.serverUrl = serverUrl;
     }

@@ -19,7 +19,7 @@ public class PublicCompilationClient extends BaseClient {
     private static final String PATH_WITH_ID = "/compilations/{compId}";
 
     @Autowired
-    public PublicCompilationClient(@Value("${ewm-server.url}") String serverUrl, RestTemplate restTemplate) {
+    public PublicCompilationClient(@Value("${ewm-service.url}") String serverUrl, RestTemplate restTemplate) {
         super(restTemplate);
         this.serverUrl = serverUrl;
     }

@@ -19,7 +19,7 @@ public class PrivateRequestClient extends BaseClient {
     private static final String PATH_CANCEL = "/users/{userId}/requests/{requestId}/cancel";
 
     @Autowired
-    public PrivateRequestClient(@Value("${ewm-server.url}") String serverUrl, RestTemplate restTemplate) {
+    public PrivateRequestClient(@Value("${ewm-service.url}") String serverUrl, RestTemplate restTemplate) {
         super(restTemplate);
         this.serverUrl = serverUrl;
     }

@@ -16,7 +16,7 @@ public class AdminCategoryClient extends BaseClient {
     private static final String PATH_WITH_ID = "/admin/categories/{catId}";
 
     @Autowired
-    public AdminCategoryClient(@Value("${ewm-server.url}") String serverUrl, RestTemplate restTemplate) {
+    public AdminCategoryClient(@Value("${ewm-service.url}") String serverUrl, RestTemplate restTemplate) {
         super(restTemplate);
         this.serverUrl = serverUrl;
     }
