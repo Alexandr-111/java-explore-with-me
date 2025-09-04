@@ -83,8 +83,20 @@ public class BaseClient {
             });
         }
         URI uri = builder.encode().build().toUri();
+
         try {
-            return rest.exchange(uri, method, requestEntity, responseType);
+            ResponseEntity<R> response = rest.exchange(uri, method, requestEntity, responseType);
+            // Создаем новый ResponseEntity с корректными заголовками
+            // В тестах без этого у меня возникают ошибки
+            HttpHeaders newHeaders = new HttpHeaders();
+            newHeaders.putAll(response.getHeaders());
+            // Удаляем проблемные заголовки и устанавливаем новые
+            newHeaders.remove("transfer-encoding");
+            newHeaders.remove("connection");
+            newHeaders.setContentType(MediaType.APPLICATION_JSON);
+            newHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+            return new ResponseEntity<>(response.getBody(), newHeaders, response.getStatusCode());
         } catch (HttpStatusCodeException e) {
             throw new ServerResponseException(e.getResponseBodyAsString(), e.getStatusCode());
         } catch (ResourceAccessException e) {
