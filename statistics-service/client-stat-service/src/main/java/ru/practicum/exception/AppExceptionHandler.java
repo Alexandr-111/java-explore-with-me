@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -94,5 +95,15 @@ public class AppExceptionHandler {
         log.error("Сетевая ошибка: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new Response("Сетевая ошибка", ex.getMessage()));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Response> handleMissingParams(MissingServletRequestParameterException ex) {
+        String parameterName = ex.getParameterName();
+        String message = "Необходимый параметр '" + parameterName + "' отсутствует";
+        log.error("Ошибка: {}", message);
+        Map<String, String> errors = Map.of(parameterName, message);
+        Response response = new Response("Ошибка валидации параметров", errors);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 }
