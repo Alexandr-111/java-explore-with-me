@@ -37,6 +37,8 @@ services:
     depends_on:
       stats-server:
         condition: service_healthy
+      ewm-gateway:
+        condition: service_healthy
     environment:
       - STATS_SERVER_URL=http://stats-server:7070
       - TZ=UTC
@@ -74,6 +76,12 @@ services:
     depends_on:
       ewm-service:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     environment:
       - EWM_SERVICE_URL=http://ewm-service:6060
       - TZ=UTC
