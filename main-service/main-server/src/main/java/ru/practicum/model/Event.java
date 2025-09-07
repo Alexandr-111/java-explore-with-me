@@ -80,7 +80,4 @@ public class Event {
 
     @Column(name = "title", nullable = false, length = 120)
     private String title;
-
-    @Column(name = "views")
-    private Long views;
 }

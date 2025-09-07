@@ -36,7 +36,6 @@ CREATE TABLE IF NOT EXISTS events (
     request_moderation BOOLEAN DEFAULT FALSE,
     state VARCHAR(20) DEFAULT 'PENDING' CHECK (state IN ('PENDING', 'PUBLISHED', 'CANCELED')),
     title VARCHAR(120) NOT NULL,
-    views BIGINT DEFAULT 0,
     CONSTRAINT fk_event_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
     CONSTRAINT fk_event_initiator FOREIGN KEY (initiator_id) REFERENCES users(id) ON DELETE CASCADE
 );

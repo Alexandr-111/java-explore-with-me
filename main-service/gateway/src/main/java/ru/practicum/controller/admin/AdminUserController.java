@@ -29,7 +29,6 @@ import java.util.List;
 public class AdminUserController {
     private final AdminUserClient client;
 
-
     @GetMapping
     public ResponseEntity<List<UserDto>> getUsers(
             @RequestParam(required = false) List<Long> ids,

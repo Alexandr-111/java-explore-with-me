@@ -1,7 +1,6 @@
 package ru.practicum.service.admin;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
@@ -22,12 +21,16 @@ import ru.practicum.model.Event;
 import ru.practicum.repository.CategoryRepository;
 import ru.practicum.repository.EventRepository;
 import ru.practicum.repository.EventSpecifications;
+import ru.practicum.service.apipublic.PublicEventService;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,6 +39,7 @@ import java.util.stream.Collectors;
 public class AdminEventServiceImpl implements AdminEventService {
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
+    private final PublicEventService publicEventService;
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
@@ -51,8 +55,8 @@ public class AdminEventServiceImpl implements AdminEventService {
         PageRequest pageRequest = PageRequest.of(from / size, size);
 
         List<EventState> eventStates = parseEventStates(states);
-        LocalDateTime startTime = parseDateTime(rangeStart);
-        LocalDateTime endTime = parseDateTime(rangeEnd);
+        LocalDateTime startTime = parseDateTime(rangeStart).orElse(null);
+        LocalDateTime endTime = parseDateTime(rangeEnd).orElse(null);
 
         Specification<Event> spec = Specification.allOf(
                 EventSpecifications.hasUsers(users),
@@ -63,9 +67,13 @@ public class AdminEventServiceImpl implements AdminEventService {
         );
 
         Page<Event> eventsPage = eventRepository.findAll(spec, pageRequest);
+        Map<Long, Long> eventViews = publicEventService.getEventsViews(eventsPage.getContent());
 
         List<EventFullDto> eventFullDtos = eventsPage.getContent().stream()
-                .map(EventMapper::toEventFullDto)
+                .map(event -> {
+                    Long views = eventViews.getOrDefault(event.getId(), 0L);
+                    return EventMapper.toEventFullDto(event, views);
+                })
                 .collect(Collectors.toList());
 
         PageResponse<EventFullDto> response = PageResponse.<EventFullDto>builder()
@@ -89,27 +97,31 @@ public class AdminEventServiceImpl implements AdminEventService {
         updateEventFields(event, dto);
 
         Event updatedEvent = eventRepository.save(event);
-        return ResponseEntity.ok(EventMapper.toEventFullDto(updatedEvent));
+        Long views = publicEventService.getEventViews(updatedEvent);
+        return ResponseEntity.ok(EventMapper.toEventFullDto(updatedEvent, views));
     }
 
-    private LocalDateTime parseDateTime(String dateTimeStr) {
+    private Optional<LocalDateTime> parseDateTime(String dateTimeStr) {
         if (dateTimeStr == null || dateTimeStr.isBlank()) {
-            return null;
+            return Optional.empty();
         }
         try {
             String decodedDateTime = URLDecoder.decode(dateTimeStr, StandardCharsets.UTF_8);
-            return LocalDateTime.parse(decodedDateTime, FORMATTER);
+            return Optional.of(LocalDateTime.parse(decodedDateTime, FORMATTER));
         } catch (Exception e) {
             throw new IllegalArgumentException("Некорректный формат даты: " + dateTimeStr, e);
         }
     }
 
     private void validateEventUpdate(Event event, UpdateEventAdminRequest dto) {
+        Optional<LocalDateTime> newEventDateOpt = Optional.empty();
         if (dto.getEventDate() != null) {
-            LocalDateTime newEventDate = parseDateTime(dto.getEventDate());
-            if (newEventDate.isBefore(LocalDateTime.now())) {
-                throw new BadInputException("Дата события не может быть в прошлом");
-            }
+            newEventDateOpt = parseDateTime(dto.getEventDate());
+            newEventDateOpt.ifPresent(newEventDate -> {
+                if (newEventDate.isBefore(LocalDateTime.now())) {
+                    throw new BadInputException("Дата события не может быть в прошлом");
+                }
+            });
         }
 
         if (dto.getStateAction() != null) {
@@ -117,8 +129,8 @@ public class AdminEventServiceImpl implements AdminEventService {
                 if (event.getState() != EventState.PENDING) {
                     throw new ConflictException("Событие можно публиковать только из состояния PENDING");
                 }
-                LocalDateTime eventDateToCheck = dto.getEventDate() != null ?
-                        parseDateTime(dto.getEventDate()) : event.getEventDate();
+                LocalDateTime eventDateToCheck = newEventDateOpt
+                        .orElse(event.getEventDate());
 
                 if (eventDateToCheck.isBefore(LocalDateTime.now().plusHours(1))) {
                     throw new BadInputException("Дата события должна быть не ранее чем через час от текущего момента");
@@ -145,7 +157,9 @@ public class AdminEventServiceImpl implements AdminEventService {
             event.setCategory(category);
         }
         if (dto.getEventDate() != null) {
-            event.setEventDate(parseDateTime(dto.getEventDate()));
+            LocalDateTime parsedDate = parseDateTime(dto.getEventDate())
+                    .orElseThrow(() -> new IllegalArgumentException("Дата события некорректна"));
+            event.setEventDate(parsedDate);
         }
         if (dto.getLocation() != null) {
             event.setLat(dto.getLocation().getLat());
@@ -163,7 +177,7 @@ public class AdminEventServiceImpl implements AdminEventService {
 
     private List<EventState> parseEventStates(List<String> states) {
         if (states == null || states.isEmpty()) {
-            return null;
+            return Collections.emptyList();
         }
         return states.stream()
                 .map(String::toUpperCase)

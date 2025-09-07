@@ -5,39 +5,39 @@ import ru.practicum.event.EventFullDto;
 import ru.practicum.event.EventShortDto;
 import ru.practicum.model.Event;
 
-import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 import static ru.practicum.mapper.CategoryMapper.toCategoryDto;
 import static ru.practicum.mapper.UserMapper.toUserShortDto;
+import static ru.practicum.service.apiprivate.PrivateEventServiceImpl.FORMATTER;
 
 public class EventMapper {
 
-    public static EventShortDto toEventShortDto(Event event) {
+    public static EventShortDto toEventShortDto(Event event, Long views) {
         Objects.requireNonNull(event, "Событие (Event) не должно быть null");
         return EventShortDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
                 .category(toCategoryDto(event.getCategory()))
                 .confirmedRequests(event.getConfirmedRequests())
-                .eventDate(event.getEventDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                .eventDate(event.getEventDate().format(FORMATTER))
                 .initiator(toUserShortDto(event.getInitiator()))
                 .paid(event.getPaid())
                 .title(event.getTitle())
-                .views(event.getViews())
+                .views(views != null ? views : 0L)
                 .build();
     }
 
-    public static EventFullDto toEventFullDto(Event event) {
+    public static EventFullDto toEventFullDto(Event event, Long views) {
         Objects.requireNonNull(event, "Событие (Event) не должно быть null");
         return EventFullDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
                 .category(toCategoryDto(event.getCategory()))
                 .confirmedRequests(event.getConfirmedRequests())
-                .createdOn(event.getCreatedOn().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                .createdOn(event.getCreatedOn().format(FORMATTER))
                 .description(event.getDescription())
-                .eventDate(event.getEventDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                .eventDate(event.getEventDate().format(FORMATTER))
                 .initiator(toUserShortDto(event.getInitiator()))
                 .location(new Location(event.getLat(), event.getLon()))
                 .paid(event.getPaid())
@@ -46,7 +46,7 @@ public class EventMapper {
                 .requestModeration(event.getRequestModeration())
                 .state(event.getState())
                 .title(event.getTitle())
-                .views(event.getViews())
+                .views(views != null ? views : 0L)
                 .build();
     }
 }

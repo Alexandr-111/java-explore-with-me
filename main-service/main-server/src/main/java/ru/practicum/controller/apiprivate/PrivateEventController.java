@@ -1,9 +1,13 @@
 package ru.practicum.controller.apiprivate;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,6 +31,7 @@ import java.util.List;
 
 @Slf4j
 @Controller
+@Validated
 @RequestMapping("/users/{userId}/events")
 @RequiredArgsConstructor
 public class PrivateEventController {
@@ -34,18 +39,17 @@ public class PrivateEventController {
 
     @GetMapping
     public ResponseEntity<PageResponse<EventShortDto>> getUserAllEvents(
-            @PathVariable Long userId,
-            @RequestParam(defaultValue = "0") Integer from,
-            @RequestParam(defaultValue = "10") Integer size) {
+            @Positive @PathVariable Long userId,
+            @Min(0) @RequestParam(required = false, defaultValue = "0") Integer from,
+            @Min(1) @RequestParam(required = false, defaultValue = "10") Integer size) {
         log.debug("PrivateEventController. Получение событий пользователя. Получено id {}, from {}, size {}",
                 userId, from, size);
         return service.getUserAllEvents(userId, from, size);
     }
 
     @PostMapping
-    public ResponseEntity<EventFullDto> createEvent(
-            @PathVariable Long userId,
-            @RequestBody NewEventDto dto) {
+    public ResponseEntity<EventFullDto> createEvent(@Positive @PathVariable Long userId,
+                                                    @Valid @RequestBody NewEventDto dto) {
         log.debug("PrivateEventController. Создание события. Получен объект NewEventDto {}", dto);
         EventFullDto savedDto = service.createEvent(userId, dto);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -56,17 +60,17 @@ public class PrivateEventController {
     }
 
     @GetMapping("/{eventId}")
-    public ResponseEntity<EventFullDto> getUserEvent(@PathVariable Long userId,
-                                                     @PathVariable Long eventId) {
+    public ResponseEntity<EventFullDto> getUserEvent(@Positive @PathVariable Long userId,
+                                                     @Positive @PathVariable Long eventId) {
         log.debug("PrivateEventController. Получение события пользователя. Получено id {}, eventId {}",
                 userId, eventId);
         return service.getUserEvent(userId, eventId);
     }
 
     @PatchMapping("/{eventId}")
-    public ResponseEntity<EventFullDto> updateEventByUser(@PathVariable Long userId,
-                                                          @PathVariable Long eventId,
-                                                          @RequestBody UpdateEventUserRequest dto) {
+    public ResponseEntity<EventFullDto> updateEventByUser(@Positive @PathVariable Long userId,
+                                                          @Positive @PathVariable Long eventId,
+                                                          @Valid @RequestBody UpdateEventUserRequest dto) {
         log.debug("PrivateEventController. Обновление события пользователем. Получено userId {}, eventId {}, dto {}",
                 userId, eventId, dto);
         return service.updateEventByUser(userId, eventId, dto);
@@ -74,8 +78,8 @@ public class PrivateEventController {
 
     @GetMapping("/{eventId}/requests")
     public ResponseEntity<List<ParticipationRequestDto>> getParticipationRequest(
-            @PathVariable Long userId,
-            @PathVariable Long eventId) {
+            @Positive @PathVariable Long userId,
+            @Positive @PathVariable Long eventId) {
         log.debug("PrivateEventController. Получение запросов на участие в событии. Получено id {}, eventId {}",
                 userId, eventId);
         return service.getParticipationRequest(userId, eventId);
@@ -83,9 +87,9 @@ public class PrivateEventController {
 
     @PatchMapping("/{eventId}/requests")
     public ResponseEntity<EventRequestStatusUpdateResult> updateRequestStatus(
-            @PathVariable Long userId,
-            @PathVariable Long eventId,
-            @RequestBody EventRequestStatusUpdateRequest dto) {
+            @Positive @PathVariable Long userId,
+            @Positive @PathVariable Long eventId,
+            @Valid @RequestBody EventRequestStatusUpdateRequest dto) {
         log.debug("PrivateEventController. Обновление cтатуса заявки на участие. Получено userId {}, eventId {}, dto {}",
                 userId, eventId, dto);
         return service.updateRequestStatus(userId, eventId, dto);

@@ -1,5 +1,6 @@
 package ru.practicum.controller.apipublic;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PublicEventController {
     private final PublicEventService service;
+    private static final String CLIENT_IP = "X-Client-IP";
+    private static final String REQUEST_URI = "X-Request-URI";
 
     @GetMapping
     public ResponseEntity<PageResponse<EventShortDto>> getEventsWithFiltering(
@@ -34,8 +37,8 @@ public class PublicEventController {
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") Integer from,
             @RequestParam(defaultValue = "10") Integer size,
-            @RequestHeader("X-Client-IP") String clientIp,
-            @RequestHeader("X-Request-URI") String requestUri) {
+            @RequestHeader(CLIENT_IP) @NotBlank String clientIp,
+            @RequestHeader(REQUEST_URI) @NotBlank String requestUri) {
         log.debug("PublicEventController. Получение событий с возможностью фильтрации.");
         return service.getEventsWithFiltering(text, categories, paid, rangeStart, rangeEnd,
                 onlyAvailable, sort, from, size, clientIp, requestUri);
@@ -44,8 +47,8 @@ public class PublicEventController {
     @GetMapping("/{id}")
     public ResponseEntity<EventFullDto> getEventWithDetails(
             @PathVariable Long id,
-            @RequestHeader("X-Client-IP") String clientIp,
-            @RequestHeader("X-Request-URI") String requestUri) {
+            @RequestHeader(CLIENT_IP) String clientIp,
+            @RequestHeader(REQUEST_URI) String requestUri) {
         log.debug("PublicEventController. Получение подробной информации о событии с ID {}", id);
         return service.getEventWithDetails(id, clientIp, requestUri);
     }

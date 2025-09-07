@@ -10,11 +10,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.PageResponse;
 import ru.practicum.compilation.CompilationDto;
+import ru.practicum.exception.DataNotFoundException;
 import ru.practicum.mapper.CompilationMapper;
 import ru.practicum.model.Compilation;
+import ru.practicum.model.Event;
 import ru.practicum.repository.CompilationRepository;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,6 +29,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class PublicCompilationServiceImpl implements PublicCompilationService {
     private final CompilationRepository compilationRepository;
+    private final PublicEventService publicEventService;
 
     @Override
     public ResponseEntity<PageResponse<CompilationDto>> getCompilations(Boolean pinned, Integer from, Integer size) {
@@ -34,8 +42,15 @@ public class PublicCompilationServiceImpl implements PublicCompilationService {
             compilationsPage = compilationRepository.findAll(pageable);
         }
 
+        List<Event> allEvents = compilationsPage.getContent().stream()
+                .map(Compilation::getEvents)
+                .filter(events -> events != null && !events.isEmpty())
+                .flatMap(Set::stream)
+                .collect(Collectors.toList());
+
+        Map<Long, Long> eventViews = publicEventService.getEventsViews(allEvents);
         List<CompilationDto> compilationDtos = compilationsPage.getContent().stream()
-                .map(CompilationMapper::toCompilationDto)
+                .map(compilation -> CompilationMapper.toCompilationDto(compilation, eventViews))
                 .collect(Collectors.toList());
 
         PageResponse<CompilationDto> pageResponse = PageResponse.<CompilationDto>builder()
@@ -52,12 +67,22 @@ public class PublicCompilationServiceImpl implements PublicCompilationService {
     @Override
     public ResponseEntity<CompilationDto> getCompilationById(Long compId) {
         try {
-            return compilationRepository.findById(compId)
-                    .map(compilation -> ResponseEntity.ok(CompilationMapper.toCompilationDto(compilation)))
-                    .orElseGet(() -> ResponseEntity.notFound().build());
+            Optional<Compilation> compilationOpt = compilationRepository.findById(compId);
+
+            if (compilationOpt.isEmpty()) {
+                throw new DataNotFoundException("Подборка с  id" + compId + " не найдена.");
+            }
+            Compilation compilation = compilationOpt.get();
+
+            Set<Event> events = compilation.getEvents();
+            List<Event> eventList = events != null ? new ArrayList<>(events) : Collections.emptyList();
+
+            Map<Long, Long> eventViews = publicEventService.getEventsViews(eventList);
+            CompilationDto compilationDto = CompilationMapper.toCompilationDto(compilation, eventViews);
+            return ResponseEntity.ok(compilationDto);
 
         } catch (Exception e) {
-            throw new RuntimeException("Ошибка при получении  подборки по ID", e);
+            throw new RuntimeException("Ошибка при получении подборки по ID", e);
         }
     }
 }

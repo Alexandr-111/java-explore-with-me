@@ -3,6 +3,7 @@ package ru.practicum.controller.apipublic;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,8 @@ public class PublicEventController {
 
     @GetMapping
     public ResponseEntity<List<EventShortDto>> getEventsWithFiltering(
-            @RequestParam(required = false) String text,
+            @RequestParam(required = false)
+            @Size(min = 1, max = 400, message = "Текст должен быть от 1 до 400 символов") String text,
             @RequestParam(required = false) List<Long> categories,
             @RequestParam(required = false) Boolean paid,
             @RequestParam(required = false) String rangeStart,

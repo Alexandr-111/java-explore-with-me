@@ -35,9 +35,9 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
     @Override
     @Transactional
     public void removeCategory(Long catId) {
-        Category category = categoryRepository.findById(catId)
-                .orElseThrow(() -> new DataNotFoundException("Категория с id " + catId + " не найдена"));
-
+        if (!categoryRepository.existsById(catId)) {
+            throw new DataNotFoundException("Категория с id " + catId + " не найдена");
+        }
         long eventsCount = eventRepository.countByCategoryId(catId);
         if (eventsCount > 0) {
             throw new ConflictException("Невозможно удалить категорию - существуют события, связанные с ней");

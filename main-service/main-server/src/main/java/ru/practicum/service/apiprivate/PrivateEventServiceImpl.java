@@ -16,7 +16,6 @@ import ru.practicum.event.UpdateEventUserRequest;
 import ru.practicum.exception.BadInputException;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.DataNotFoundException;
-import ru.practicum.mapper.EventMapper;
 import ru.practicum.model.Category;
 import ru.practicum.model.Event;
 import ru.practicum.model.ParticipationRequest;
@@ -30,12 +29,15 @@ import ru.practicum.repository.UserRepository;
 import ru.practicum.request.EventRequestStatusUpdateRequest;
 import ru.practicum.request.EventRequestStatusUpdateResult;
 import ru.practicum.request.RequestStatusForUpdate;
+import ru.practicum.service.apipublic.PublicEventService;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
+import static ru.practicum.mapper.EventMapper.toEventFullDto;
+import static ru.practicum.mapper.EventMapper.toEventShortDto;
 import static ru.practicum.mapper.ParticipationRequestMapper.toDto;
 import static ru.practicum.mapper.ParticipationRequestMapper.toDtoList;
 
@@ -47,21 +49,27 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final ParticipationRequestRepository requestRepository;
+    private final PublicEventService publicEventService;
 
     public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
     public ResponseEntity<PageResponse<EventShortDto>> getUserAllEvents(Long userId, Integer from, Integer size) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new DataNotFoundException("Пользователь с id " + userId + " не найден"));
+        if (!userRepository.existsById(userId)) {
+            throw new DataNotFoundException("Пользователь с id " + userId + " не найден");
+        }
 
         Pageable pageable = PageRequest.of(from / size, size);
         Page<Event> eventsPage = eventRepository.findByInitiatorId(userId, pageable);
 
+        Map<Long, Long> eventViews = publicEventService.getEventsViews(eventsPage.getContent());
         List<EventShortDto> eventDtos = eventsPage.getContent()
                 .stream()
-                .map(EventMapper::toEventShortDto)
-                .collect(Collectors.toList());
+                .map(event -> {
+                    Long views = eventViews.getOrDefault(event.getId(), 0L);
+                    return toEventShortDto(event, views);
+                })
+                .toList();
 
         PageResponse<EventShortDto> pageResponse = PageResponse.<EventShortDto>builder()
                 .content(eventDtos)
@@ -101,38 +109,37 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         event.setTitle(dto.getTitle());
         event.setState(EventState.PENDING);
         event.setCreatedOn(LocalDateTime.now());
-        event.setViews(0L);
         event.setConfirmedRequests(0L);
 
         Event savedEvent = eventRepository.save(event);
-
-        return EventMapper.toEventFullDto(savedEvent);
+        return toEventFullDto(savedEvent, 0L);
     }
 
     @Override
     public ResponseEntity<EventFullDto> getUserEvent(Long userId, Long eventId) {
-        userRepository.findById(userId)
-                .orElseThrow(() -> new DataNotFoundException("Пользователь с id " + userId + " не найден"));
+        if (!userRepository.existsById(userId)) {
+            throw new DataNotFoundException("Пользователь с id " + userId + " не найден");
+        }
 
         Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
                 .orElseThrow(() -> new DataNotFoundException("Событие с id " + eventId + " не найдено"));
-        return ResponseEntity.ok(EventMapper.toEventFullDto(event));
-    }
 
+        Long views = publicEventService.getEventViews(event);
+        return ResponseEntity.ok(toEventFullDto(event, views));
+    }
 
     @Override
     @Transactional
     public ResponseEntity<EventFullDto> updateEventByUser(Long userId, Long eventId, UpdateEventUserRequest dto) {
-        userRepository.findById(userId)
-                .orElseThrow(() -> new DataNotFoundException("Пользователь с id " + userId + " не найден"));
-
+        if (!userRepository.existsById(userId)) {
+            throw new DataNotFoundException("Пользователь с id " + userId + " не найден");
+        }
         Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
                 .orElseThrow(() -> new DataNotFoundException("Событие с id " + eventId + " не найдено"));
 
         if (event.getState() != EventState.PENDING && event.getState() != EventState.CANCELED) {
             throw new ConflictException("Только ожидающие или отмененные события могут быть изменены.");
         }
-
         if (dto.getEventDate() != null) {
             LocalDateTime newEventDate = LocalDateTime.parse(dto.getEventDate(), FORMATTER);
             if (newEventDate.isBefore(LocalDateTime.now().plusHours(2))) {
@@ -155,7 +162,8 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         }
 
         Event updatedEvent = eventRepository.save(event);
-        return ResponseEntity.ok(EventMapper.toEventFullDto(updatedEvent));
+        Long views = publicEventService.getEventViews(updatedEvent);
+        return ResponseEntity.ok(toEventFullDto(updatedEvent, views));
     }
 
     private void updateEventFields(Event event, UpdateEventUserRequest dto) {

@@ -12,8 +12,11 @@ import ru.practicum.model.Compilation;
 import ru.practicum.model.Event;
 import ru.practicum.repository.CompilationRepository;
 import ru.practicum.repository.EventRepository;
+import ru.practicum.service.apipublic.PublicEventService;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import static ru.practicum.mapper.CompilationMapper.toCompilationDto;
@@ -23,6 +26,7 @@ import static ru.practicum.mapper.CompilationMapper.toCompilationDto;
 @Transactional(readOnly = true)
 public class AdminCompilationServiceImpl implements AdminCompilationService {
     private final CompilationRepository compilationRepository;
+    private final PublicEventService publicEventService;
     private final EventRepository eventRepository;
 
     @Override
@@ -35,13 +39,17 @@ public class AdminCompilationServiceImpl implements AdminCompilationService {
         compilation.setTitle(dto.getTitle());
         compilation.setPinned(dto.getPinned() != null ? dto.getPinned() : false);
 
+        Set<Event> events = new HashSet<>();
         if (dto.getEvents() != null && !dto.getEvents().isEmpty()) {
-            Set<Event> events = new HashSet<>(eventRepository.findAllById(dto.getEvents()));
+            events = new HashSet<>(eventRepository.findAllById(dto.getEvents()));
             compilation.setEvents(events);
         }
         Compilation savedCompilation = compilationRepository.save(compilation);
-        return toCompilationDto(savedCompilation);
+        Map<Long, Long> eventViews = publicEventService.getEventsViews(new ArrayList<>(events));
+
+        return toCompilationDto(savedCompilation, eventViews);
     }
+
 
     @Override
     @Transactional
@@ -73,8 +81,9 @@ public class AdminCompilationServiceImpl implements AdminCompilationService {
             Set<Event> events = new HashSet<>(eventRepository.findAllById(dto.getEvents()));
             compilation.setEvents(events);
         }
-
         Compilation updatedCompilation = compilationRepository.save(compilation);
-        return toCompilationDto(updatedCompilation);
+        Map<Long, Long> eventViews = publicEventService.getEventsViews(new ArrayList<>(updatedCompilation.getEvents()));
+
+        return toCompilationDto(updatedCompilation, eventViews);
     }
 }

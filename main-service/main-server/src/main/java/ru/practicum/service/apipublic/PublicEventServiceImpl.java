@@ -82,13 +82,12 @@ public class PublicEventServiceImpl implements PublicEventService {
 
         Page<Event> eventsPage = eventRepository.findAll(spec, pageable);
 
-        Map<Long, Long> eventViews = getEventsViews(eventsPage.getContent());
+        Map<Long, Long> viewsForEvents = getEventsViews(eventsPage.getContent());
 
         List<EventShortDto> eventDtos = eventsPage.getContent().stream()
                 .map(event -> {
-                    EventShortDto dto = EventMapper.toEventShortDto(event);
-                    dto.setViews(eventViews.getOrDefault(event.getId(), 0L));
-                    return dto;
+                    Long views = viewsForEvents.getOrDefault(event.getId(), 0L);
+                    return EventMapper.toEventShortDto(event, views);
                 })
                 .collect(Collectors.toList());
 
@@ -103,50 +102,6 @@ public class PublicEventServiceImpl implements PublicEventService {
         saveEndpointHit(clientIp, requestUri);
         return ResponseEntity.ok(pageResponse);
     }
-
-    private Map<Long, Long> getEventsViews(List<Event> events) {
-        if (events.isEmpty()) {
-            return new HashMap<>();
-        }
-        List<String> uris = events.stream()
-                .map(event -> "/events/" + event.getId())
-                .toList();
-
-        LocalDateTime start = LocalDateTime.now().minusYears(2);
-        LocalDateTime end = LocalDateTime.now();
-
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(STATS_SERVICE_URL + "/stats")
-                .queryParam("start", start.format(FORMATTER))
-                .queryParam("end", end.format(FORMATTER))
-                .queryParam("unique", false);
-
-        if (!uris.isEmpty()) {
-            for (String uri : uris) {
-                builder.queryParam("uris", uri);
-            }
-        }
-        ResponseEntity<ViewStatsDto[]> response = restTemplate.getForEntity(
-                builder.toUriString(),
-                ViewStatsDto[].class
-        );
-
-        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-            Map<String, Long> viewsByUri = Arrays.stream(response.getBody())
-                    .collect(Collectors.toMap(
-                            ViewStatsDto::getUri,
-                            ViewStatsDto::getHits,
-                            (existing, replacement) -> existing
-                    ));
-            Map<Long, Long> eventViews = new HashMap<>();
-            for (Event event : events) {
-                String eventUri = "/events/" + event.getId();
-                eventViews.put(event.getId(), viewsByUri.getOrDefault(eventUri, 0L));
-            }
-            return eventViews;
-        }
-        return events.stream().collect(Collectors.toMap(Event::getId, event -> 0L));
-    }
-
 
     private void saveEndpointHit(String clientIp, String requestUri) {
         EndpointHitDto hitDto = EndpointHitDto.builder()
@@ -179,13 +134,11 @@ public class PublicEventServiceImpl implements PublicEventService {
 
         saveEndpointHit(clientIp, requestUri);
         Long views = getEventViews(event);
-
-        EventFullDto eventDto = EventMapper.toEventFullDto(event);
-        eventDto.setViews(views);
+        EventFullDto eventDto = EventMapper.toEventFullDto(event, views);
         return ResponseEntity.ok(eventDto);
     }
 
-    private Long getEventViews(Event event) {
+    public Long getEventViews(Event event) {
         String eventUri = "/events/" + event.getId();
 
         LocalDateTime start = LocalDateTime.now().minusYears(2);
@@ -228,5 +181,49 @@ public class PublicEventServiceImpl implements PublicEventService {
                     dateTimeStr);
             throw new BadInputException(errorMessage);
         }
+    }
+
+    @Override
+    public Map<Long, Long> getEventsViews(List<Event> events) {
+        if (events.isEmpty()) {
+            return new HashMap<>();
+        }
+        List<String> uris = events.stream()
+                .map(event -> "/events/" + event.getId())
+                .toList();
+
+        LocalDateTime start = LocalDateTime.now().minusYears(2);
+        LocalDateTime end = LocalDateTime.now();
+
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(STATS_SERVICE_URL + "/stats")
+                .queryParam("start", start.format(FORMATTER))
+                .queryParam("end", end.format(FORMATTER))
+                .queryParam("unique", false);
+
+        if (!uris.isEmpty()) {
+            for (String uri : uris) {
+                builder.queryParam("uris", uri);
+            }
+        }
+        ResponseEntity<ViewStatsDto[]> response = restTemplate.getForEntity(
+                builder.toUriString(),
+                ViewStatsDto[].class
+        );
+
+        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            Map<String, Long> viewsByUri = Arrays.stream(response.getBody())
+                    .collect(Collectors.toMap(
+                            ViewStatsDto::getUri,
+                            ViewStatsDto::getHits,
+                            (existing, replacement) -> existing
+                    ));
+            Map<Long, Long> eventViews = new HashMap<>();
+            for (Event event : events) {
+                String eventUri = "/events/" + event.getId();
+                eventViews.put(event.getId(), viewsByUri.getOrDefault(eventUri, 0L));
+            }
+            return eventViews;
+        }
+        return events.stream().collect(Collectors.toMap(Event::getId, event -> 0L));
     }
 }

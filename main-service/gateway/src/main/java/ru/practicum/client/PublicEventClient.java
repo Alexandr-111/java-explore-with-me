@@ -19,6 +19,8 @@ public class PublicEventClient extends BaseClient {
     private final String serverUrl;
     private static final String RESOURCE_PATH = "/events";
     private static final String EVENT_BY_ID_PATH = "/events/{id}";
+    private static final String CLIENT_IP = "X-Client-IP";
+    private static final String REQUEST_URI = "X-Request-URI";
 
     @Autowired
     public PublicEventClient(@Value("${ewm-service.url}") String serverUrl, RestTemplate restTemplate) {
@@ -40,8 +42,8 @@ public class PublicEventClient extends BaseClient {
             String requestURI) {
         Map<String, Object> parameters = new HashMap<>();
 
-        if (text != null) {
-            parameters.put("text", text);
+        if (text != null && !text.isBlank()) {
+            parameters.put("text", text.trim());
         }
         if (categories != null && !categories.isEmpty()) {
             parameters.put("categories", categories);
@@ -69,8 +71,8 @@ public class PublicEventClient extends BaseClient {
                 .toUriString();
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-Client-IP", remoteAddr);
-        headers.set("X-Request-URI", requestURI);
+        headers.set(CLIENT_IP, remoteAddr);
+        headers.set(REQUEST_URI, requestURI);
 
         return getPageList(path, parameters, headers);
     }
@@ -82,8 +84,8 @@ public class PublicEventClient extends BaseClient {
                 .toUriString();
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-Client-IP", remoteAddr);
-        headers.set("X-Request-URI", requestURI);
+        headers.set(CLIENT_IP, remoteAddr);
+        headers.set(REQUEST_URI, requestURI);
 
         return get(path, EventFullDto.class, headers);
     }
