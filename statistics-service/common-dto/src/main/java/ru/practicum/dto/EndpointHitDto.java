@@ -17,13 +17,13 @@ import java.time.LocalDateTime;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class EndpointHitDto {
     @NotBlank(message = "Поле app не должно быть пустым")
-    private String app;  // Идентификатор сервиса
+    private String app;
 
     @NotBlank(message = "URI не должен быть пустым")
-    private String uri;   // URI для которого был осуществлен запрос
+    private String uri;
 
     @NotBlank(message = "IP не должен быть пустым")
-    private String ip;  // IP-адрес пользователя
+    private String ip;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime timestamp;

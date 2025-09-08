@@ -9,6 +9,7 @@ import ru.practicum.client.BaseClient;
 import ru.practicum.dto.ViewStatsDto;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,8 +24,8 @@ public class StatsClient extends BaseClient {
         this.serverUrl = serverUrl;
     }
 
-    public ResponseEntity<List<ViewStatsDto>> fetchStats(LocalDateTime start, LocalDateTime end,
-                                                         List<String> uris, boolean unique) {
+    public List<ViewStatsDto> fetchStats(LocalDateTime start, LocalDateTime end,
+                                         List<String> uris, boolean unique) {
         String url = serverUrl + "/stats";
 
         Map<String, Object> parameters = new HashMap<>();
@@ -35,6 +36,11 @@ public class StatsClient extends BaseClient {
         if (uris != null && !uris.isEmpty()) {
             parameters.put("uris", uris);
         }
-        return getList(url, ViewStatsDto.class, parameters);
+        ResponseEntity<List<ViewStatsDto>> response = getList(url, ViewStatsDto.class, parameters);
+
+        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            return response.getBody();
+        }
+        return Collections.emptyList();
     }
 }

@@ -1,9 +1,14 @@
 package ru.practicum.statsclient;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
@@ -48,9 +53,25 @@ public class StatsClientController {
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
             @RequestParam(required = false) List<String> uris,
-            @RequestParam(required = false, defaultValue = "false") boolean unique) {
+            @RequestParam(defaultValue = "false") boolean unique) {
         log.debug("StatsController. Запрос статистики. Получены объекты start {}, end {}, uris {} и unique {}",
                 start, end, uris, unique);
-        return statsClient.fetchStats(start, end, uris, unique);
+
+        List<ViewStatsDto> result = statsClient.fetchStats(start, end, uris, unique);
+
+        try {
+            byte[] bodyBytes = new ObjectMapper()
+                    .registerModule(new JavaTimeModule())
+                    .writeValueAsBytes(result);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setContentLength(bodyBytes.length);
+
+            return new ResponseEntity<>(result, headers, HttpStatus.OK);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при сериализации ответа", e);
+        }
     }
 }
