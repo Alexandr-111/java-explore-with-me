@@ -897,7 +897,7 @@
           "        };",
           "    }",
           "",
-          "    static getFutureDateTime(hourShift = 2, minuteShift = 0) {",
+          "    static getFutureDateTime(hourShift = 6, minuteShift = 30) {",
           "        let moment = require('moment');",
           "        let m = moment();",
           "        m.add(hourShift, 'hour');",
