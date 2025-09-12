@@ -1,6 +1,8 @@
 package ru.practicum.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import ru.practicum.model.ParticipationRequest;
 import ru.practicum.participation.ParticipationRequestStatus;
 
@@ -20,4 +22,7 @@ public interface ParticipationRequestRepository extends JpaRepository<Participat
     List<ParticipationRequest> findAllByRequesterIdOrderByCreatedDesc(Long requesterId);
 
     Optional<ParticipationRequest> findByRequesterIdAndEventId(Long requesterId, Long eventId);
+
+    @Query("SELECT pr FROM ParticipationRequest pr JOIN FETCH pr.event WHERE pr.id = :id")
+    Optional<ParticipationRequest> findByIdWithEvent(@Param("id") Long id);
 }

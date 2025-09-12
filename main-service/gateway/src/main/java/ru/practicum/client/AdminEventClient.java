@@ -18,6 +18,7 @@ public class AdminEventClient extends BaseClient {
     private final String serverUrl;
     private static final String RESOURCE_PATH = "/admin/events";
     private static final String PATH_WITH_ID = "/admin/events/{eventId}";
+    private static final String PATH_FOR_FINISH = "/admin/events/{eventId}/finish";
 
     @Autowired
     public AdminEventClient(@Value("${ewm-service.url}") String serverUrl, RestTemplate restTemplate) {
@@ -61,5 +62,14 @@ public class AdminEventClient extends BaseClient {
                 .toUriString();
 
         return patch(path, dto, EventFullDto.class);
+    }
+
+    public ResponseEntity<EventFullDto> finishEvent(Long eventId) {
+        String path = UriComponentsBuilder.fromUriString(serverUrl)
+                .path(PATH_FOR_FINISH)
+                .buildAndExpand(eventId)
+                .toUriString();
+
+        return post(path, (Object) null, EventFullDto.class);
     }
 }

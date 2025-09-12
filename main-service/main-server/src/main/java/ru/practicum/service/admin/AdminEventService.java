@@ -1,9 +1,9 @@
 package ru.practicum.service.admin;
 
 import org.springframework.http.ResponseEntity;
+import ru.practicum.PageResponse;
 import ru.practicum.event.EventFullDto;
 import ru.practicum.event.UpdateEventAdminRequest;
-import ru.practicum.PageResponse;
 
 import java.util.List;
 
@@ -18,4 +18,6 @@ public interface AdminEventService {
             Integer size);
 
     ResponseEntity<EventFullDto> updateEvent(Long eventId, UpdateEventAdminRequest dto);
+
+    EventFullDto finishEvent(Long eventId);
 }
