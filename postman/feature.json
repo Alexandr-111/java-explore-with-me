@@ -1,0 +1,919 @@
+{
+  "info": {
+    "_postman_id": "ratings-test-1-final",
+    "name": "Отзывы",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Тест 1: Создание отзыва пользователем",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const main = async () => {",
+              "    const api = new API(pm);",
+              "    const testData = TestData;",
+              "",
+              "    try {",
+              "        // 1. Создаём организатора события",
+              "        const organizer = await api.addUser(testData.getUser());",
+              "",
+              "        // 2. Создаём категорию",
+              "        const category = await api.addCategory(testData.getCategory());",
+              "",
+              "        // 3. Создаём событие — статус PENDING",
+              "        let event = await api.createEvent(organizer.id, testData.getEvent(category.id));",
+              "",
+              "        // 4. Администратор публикует событие — статус PUBLISHED",
+              "        event = await api.publishEvent(event.id);",
+              "",
+              "        // 5. Создаём участника (кто будет оставлять отзыв)",
+              "        const participant = await api.addUser(testData.getUser());",
+              "",
+              "        // 6. Участник подаёт заявку на участие — статус автоматически CONFIRMED (т.к. requestModeration = false)",
+              "        const request = await api.publishParticipationRequest(event.id, participant.id);",
+              "",
+              "        // 7. Администратор завершает событие — isFinished = true",
+              "        await api.finishEvent(event.id);",
+              "",
+              "        // 8. Администратор подтверждает факт участия",
+              "        await api.confirmAttendance(request.id);",
+              "",
+              "        pm.collectionVariables.set('eventId', event.id);",
+              "        pm.collectionVariables.set('userId', participant.id);",
+              "",
+              "    } catch (err) {",
+              "        console.error(\"Ошибка в prerequest:\", err);",
+              "        throw err;",
+              "    }",
+              "};",
+              "",
+              "const interval = setInterval(() => {}, 1000);",
+              "",
+              "setTimeout(async () => {",
+              "    try {",
+              "        await main();",
+              "    } catch (e) {",
+              "        console.error(e);",
+              "    } finally {",
+              "        clearInterval(interval);",
+              "    }",
+              "}, 100);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Проверяем, что запрос на создание отзыва выполнен успешно",
+              "pm.test(\"Запрос на создание отзыва должен вернуть статус 201\", function () {",
+              "    pm.expect(pm.response.code).to.equal(201);",
+              "});",
+              "",
+              "if (pm.response.code === 201) {",
+              "    const review = pm.response.json();",
+              "",
+              "    pm.test(\"Отзыв должен содержать id, eventId, userDto, rating, comment, createdAt\", function () {",
+              "        pm.expect(review).to.have.property('id');",
+              "        pm.expect(review).to.have.property('eventId');",
+              "        pm.expect(review).to.have.property('userDto');",
+              "        pm.expect(review).to.have.property('rating');",
+              "        pm.expect(review).to.have.property('comment');",
+              "        pm.expect(review).to.have.property('createdAt');",
+              "    });",
+              "",
+              "    pm.test(\"Рейтинг должен быть 5\", function () {",
+              "        pm.expect(review.rating).to.eql(5);",
+              "    });",
+              "",
+              "    pm.test(\"Комментарий должен совпадать\", function () {",
+              "        pm.expect(review.comment).to.eql('Отличное событие! Всё понравилось.');",
+              "    });",
+              "",
+              "    pm.test(\"eventId должен совпадать с созданным событием\", function () {",
+              "        pm.expect(review.eventId).to.eql(pm.collectionVariables.get('eventId'));",
+              "    });",
+              "} else if (pm.response.code === 409) {",
+              "    // Если отзыв уже существует, проверяем сообщение об ошибке",
+              "    const responseJson = pm.response.json();",
+              "    pm.test(\"Должна быть ошибка о дублировании отзыва\", function () {",
+              "        pm.expect(responseJson.message).to.include('Вы уже оставляли отзыв на это событие');",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"eventId\": {{eventId}},\n    \"rating\": 5,\n    \"comment\": \"Отличное событие! Всё понравилось.\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/private/reviews/{{userId}}",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "private",
+            "reviews",
+            "{{userId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Тест 2: Обновление комментария в отзыве",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const main = async () => {",
+              "    const api = new API(pm);",
+              "    const testData = TestData;",
+              "",
+              "    try {",
+              "        // 1. Создаём организатора события",
+              "        const organizer = await api.addUser(testData.getUser());",
+              "",
+              "        // 2. Создаём категорию",
+              "        const category = await api.addCategory(testData.getCategory());",
+              "",
+              "        // 3. Создаём событие — статус PENDING",
+              "        let event = await api.createEvent(organizer.id, testData.getEvent(category.id));",
+              "",
+              "        // 4. Администратор публикует событие — статус PUBLISHED",
+              "        event = await api.publishEvent(event.id);",
+              "",
+              "        // 5. Создаём участника (кто будет оставлять отзыв)",
+              "        const participant = await api.addUser(testData.getUser());",
+              "",
+              "        // 6. Участник подаёт заявку на участие — статус автоматически CONFIRMED (т.к. requestModeration = false)",
+              "        const request = await api.publishParticipationRequest(event.id, participant.id);",
+              "",
+              "        // 7. Администратор завершает событие — isFinished = true",
+              "        await api.finishEvent(event.id);",
+              "",
+              "        // 8. Администратор подтверждает факт участия",
+              "        await api.confirmAttendance(request.id);",
+              "",
+              "        // 9. Участник создаёт отзыв",
+              "        const reviewData = {",
+              "            eventId: event.id,",
+              "            rating: 5,",
+              "            comment: 'Отличное событие! Всё понравилось.'",
+              "        };",
+              "        const review = await api.createReview(participant.id, reviewData);",
+              "",
+              "        pm.collectionVariables.set('reviewId', review.id);",
+              "        pm.collectionVariables.set('eventId', event.id);",
+              "        pm.collectionVariables.set('userId', participant.id);",
+              "",
+              "    } catch (err) {",
+              "        console.error(\"Ошибка в prerequest:\", err);",
+              "        throw err;",
+              "    }",
+              "};",
+              "",
+              "const interval = setInterval(() => {}, 1000);",
+              "",
+              "setTimeout(async () => {",
+              "    try {",
+              "        await main();",
+              "    } catch (e) {",
+              "        console.error(e);",
+              "    } finally {",
+              "        clearInterval(interval);",
+              "    }",
+              "}, 100);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Проверяем, что запрос на обновление отзыва выполнен успешно",
+              "pm.test(\"Запрос на обновление отзыва должен вернуть статус 200\", function () {",
+              "    pm.expect(pm.response.code).to.equal(200);",
+              "});",
+              "",
+              "const updatedReview = pm.response.json();",
+              "",
+              "pm.test(\"Обновленный отзыв должен содержать все необходимые поля\", function () {",
+              "    pm.expect(updatedReview).to.have.property('id');",
+              "    pm.expect(updatedReview).to.have.property('eventId');",
+              "    pm.expect(updatedReview).to.have.property('userDto');",
+              "    pm.expect(updatedReview).to.have.property('rating');",
+              "    pm.expect(updatedReview).to.have.property('comment');",
+              "    pm.expect(updatedReview).to.have.property('createdAt');",
+              "});",
+              "",
+              "pm.test(\"Рейтинг должен остаться прежним (5)\", function () {",
+              "    pm.expect(updatedReview.rating).to.eql(5);",
+              "});",
+              "",
+              "pm.test(\"Комментарий должен измениться\", function () {",
+              "    pm.expect(updatedReview.comment).to.eql('Хорошее событие, но есть недочёты.');",
+              "});",
+              "",
+              "pm.test(\"ID отзыва должен быть правильным\", function () {",
+              "    pm.expect(updatedReview.id).to.eql(pm.collectionVariables.get('reviewId'));",
+              "});",
+              "",
+              "pm.test(\"eventId должен совпадать с созданным событием\", function () {",
+              "    pm.expect(updatedReview.eventId).to.eql(pm.collectionVariables.get('eventId'));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"eventId\": {{eventId}},\n    \"comment\": \"Хорошее событие, но есть недочёты.\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/private/reviews/{{userId}}/{{reviewId}}",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "private",
+            "reviews",
+            "{{userId}}",
+            "{{reviewId}}"
+          ]
+        }
+      }
+    },
+    {
+    "name": "Тест 3: Получение отзыва администратором",
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "const main = async () => {",
+                    "    const api = new API(pm);",
+                    "    const testData = TestData;",
+                    "",
+                    "    try {",
+                    "        // 1. Создаём организатора события",
+                    "        const organizer = await api.addUser(testData.getUser());",
+                    "",
+                    "        // 2. Создаём категорию",
+                    "        const category = await api.addCategory(testData.getCategory());",
+                    "",
+                    "        // 3. Создаём событие — статус PENDING",
+                    "        let event = await api.createEvent(organizer.id, testData.getEvent(category.id));",
+                    "",
+                    "        // 4. Администратор публикует событие — статус PUBLISHED",
+                    "        event = await api.publishEvent(event.id);",
+                    "",
+                    "        // 5. Создаём участника (кто будет оставлять отзыв)",
+                    "        const participant = await api.addUser(testData.getUser());",
+                    "",
+                    "        // 6. Участник подаёт заявку на участие — статус автоматически CONFIRMED (т.к. requestModeration = false)",
+                    "        const request = await api.publishParticipationRequest(event.id, participant.id);",
+                    "",
+                    "        // 7. Администратор завершает событие — isFinished = true",
+                    "        await api.finishEvent(event.id);",
+                    "",
+                    "        // 8. Администратор подтверждает факт участия",
+                    "        await api.confirmAttendance(request.id);",
+                    "",
+                    "        // 9. Участник создаёт отзыв",
+                    "        const reviewData = {",
+                    "            eventId: event.id,",
+                    "            rating: 5,",
+                    "            comment: 'Отличное событие! Всё понравилось.'",
+                    "        };",
+                    "        const review = await api.createReview(participant.id, reviewData);",
+                    "",
+                    "        pm.collectionVariables.set('reviewId', review.id);",
+                    "",
+                    "    } catch (err) {",
+                    "        console.error(\"Ошибка в prerequest:\", err);",
+                    "        throw err;",
+                    "    }",
+                    "};",
+                    "",
+                    "const interval = setInterval(() => {}, 1000);",
+                    "",
+                    "setTimeout(async () => {",
+                    "    try {",
+                    "        await main();",
+                    "    } catch (e) {",
+                    "        console.error(e);",
+                    "    } finally {",
+                    "        clearInterval(interval);",
+                    "    }",
+                    "}, 100);"
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Проверяем, что запрос выполнен успешно",
+                    "pm.test(\"Запрос на получение отзыва должен вернуть статус 200\", function () {",
+                    "    pm.expect(pm.response.code).to.equal(200);",
+                    "});",
+                    "",
+                    "const review = pm.response.json();",
+                    "",
+                    "pm.test(\"Отзыв должен содержать все необходимые поля\", function () {",
+                    "    pm.expect(review).to.have.property('id');",
+                    "    pm.expect(review).to.have.property('eventId');",
+                    "    pm.expect(review).to.have.property('userDto');",
+                    "    pm.expect(review).to.have.property('rating');",
+                    "    pm.expect(review).to.have.property('comment');",
+                    "    pm.expect(review).to.have.property('createdAt');",
+                    "});",
+                    "",
+                    "pm.test(\"Рейтинг должен быть 5\", function () {",
+                    "    pm.expect(review.rating).to.eql(5);",
+                    "});",
+                    "",
+                    "pm.test(\"Комментарий должен совпадать\", function () {",
+                    "    pm.expect(review.comment).to.eql('Отличное событие! Всё понравилось.');",
+                    "});",
+                    "",
+                    "pm.test(\"userDto должен содержать информацию о пользователе\", function () {",
+                    "    pm.expect(review.userDto).to.have.property('id');",
+                    "    pm.expect(review.userDto).to.have.property('name');",
+                    "    pm.expect(review.userDto).to.have.property('email');",
+                    "});"
+                ]
+            }
+        }
+    ],
+    "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+            "raw": "{{baseUrl}}/admin/reviews/{{reviewId}}",
+            "protocol": "http",
+            "host": [
+                "localhost"
+            ],
+            "port": "8080",
+            "path": [
+                "admin",
+                "reviews",
+                "{{reviewId}}"
+            ]
+        }
+    }
+},
+{
+    "name": "Тест 4: Получение списка отзывов администратором",
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "const main = async () => {",
+                    "    const api = new API(pm);",
+                    "    const testData = TestData;",
+                    "",
+                    "    try {",
+                    "        // 1. Создаём организатора события",
+                    "        const organizer = await api.addUser(testData.getUser());",
+                    "",
+                    "        // 2. Создаём категорию",
+                    "        const category = await api.addCategory(testData.getCategory());",
+                    "",
+                    "        // 3. Создаём событие — статус PENDING",
+                    "        let event = await api.createEvent(organizer.id, testData.getEvent(category.id));",
+                    "",
+                    "        // 4. Администратор публикует событие — статус PUBLISHED",
+                    "        event = await api.publishEvent(event.id);",
+                    "",
+                    "        // 5. Создаём двух участников (кто будет оставлять отзывы)",
+                    "        const participant1 = await api.addUser(testData.getUser());",
+                    "        const participant2 = await api.addUser(testData.getUser());",
+                    "",
+                    "        // 6. Участники подают заявки на участие",
+                    "        const request1 = await api.publishParticipationRequest(event.id, participant1.id);",
+                    "        const request2 = await api.publishParticipationRequest(event.id, participant2.id);",
+                    "",
+                    "        // 7. Администратор завершает событие — isFinished = true",
+                    "        await api.finishEvent(event.id);",
+                    "",
+                    "        // 8. Администратор подтверждает факт участия",
+                    "        await api.confirmAttendance(request1.id);",
+                    "        await api.confirmAttendance(request2.id);",
+                    "",
+                    "        // 9. Участники создают отзывы",
+                    "        const reviewData1 = {",
+                    "            eventId: event.id,",
+                    "            rating: 5,",
+                    "            comment: 'Отличное событие! Всё понравилось.'",
+                    "        };",
+                    "        const reviewData2 = {",
+                    "            eventId: event.id,",
+                    "            rating: 4,",
+                    "            comment: 'Хорошее событие, но есть небольшие недочёты.'",
+                    "        };",
+                    "        const review1 = await api.createReview(participant1.id, reviewData1);",
+                    "        const review2 = await api.createReview(participant2.id, reviewData2);",
+                    "",
+                    "        pm.collectionVariables.set('reviewIds', review1.id + ',' + review2.id);",
+                    "        pm.collectionVariables.set('eventId', event.id);",
+                    "",
+                    "    } catch (err) {",
+                    "        console.error(\"Ошибка в prerequest:\", err);",
+                    "        throw err;",
+                    "    }",
+                    "};",
+                    "",
+                    "const interval = setInterval(() => {}, 1000);",
+                    "",
+                    "setTimeout(async () => {",
+                    "    try {",
+                    "        await main();",
+                    "    } catch (e) {",
+                    "        console.error(e);",
+                    "    } finally {",
+                    "        clearInterval(interval);",
+                    "    }",
+                    "}, 100);"
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Проверяем, что запрос выполнен успешно",
+                    "pm.test(\"Запрос на получение списка отзывов должен вернуть статус 200\", function () {",
+                    "    pm.expect(pm.response.code).to.equal(200);",
+                    "});",
+                    "",
+                    "const reviews = pm.response.json();",
+                    "",
+                    "pm.test(\"Должен вернуться массив отзывов\", function () {",
+                    "    pm.expect(reviews).to.be.an('array');",
+                    "});",
+                    "",
+                    "if (reviews.length > 0) {",
+                    "    const review = reviews[0];",
+                    "",
+                    "    pm.test(\"Каждый отзыв должен содержать все необходимые поля\", function () {",
+                    "        pm.expect(review).to.have.property('id');",
+                    "        pm.expect(review).to.have.property('eventId');",
+                    "        pm.expect(review).to.have.property('userDto');",
+                    "        pm.expect(review).to.have.property('rating');",
+                    "        pm.expect(review).to.have.property('comment');",
+                    "        pm.expect(review).to.have.property('createdAt');",
+                    "    });",
+                    "",
+                    "    pm.test(\"userDto должен содержать информацию о пользователе\", function () {",
+                    "        pm.expect(review.userDto).to.have.property('id');",
+                    "        pm.expect(review.userDto).to.have.property('name');",
+                    "        pm.expect(review.userDto).to.have.property('email');",
+                    "    });",
+                    "}",
+                    "",
+                    "// Проверяем пагинацию",
+                    "pm.test(\"Количество возвращенных отзывов не должно превышать размер страницы\", function () {",
+                    "    pm.expect(reviews.length).to.be.at.most(10); // size по умолчанию 10",
+                    "});"
+                ]
+            }
+        }
+    ],
+    "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+            "raw": "{{baseUrl}}/admin/reviews?ids={{reviewIds}}",
+            "protocol": "http",
+            "host": [
+                "localhost"
+            ],
+            "port": "8080",
+            "path": [
+                "admin",
+                "reviews"
+            ],
+            "query": [
+                {
+                    "key": "ids",
+                    "value": "{{reviewIds}}"
+                }
+            ]
+        }
+    }
+},
+{
+    "name": "Тест 5: Получение списка отзывов с пагинацией",
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Используем те же данные, что и в предыдущем тесте",
+                    "// Ждем завершения предыдущего prerequest",
+                    "const interval = setInterval(() => {}, 1000);",
+                    "setTimeout(() => clearInterval(interval), 2000);"
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Проверяем, что запрос выполнен успешно",
+                    "pm.test(\"Запрос на получение списка отзывов с пагинацией должен вернуть статус 200\", function () {",
+                    "    pm.expect(pm.response.code).to.equal(200);",
+                    "});",
+                    "",
+                    "const reviews = pm.response.json();",
+                    "",
+                    "pm.test(\"Должен вернуться массив отзывов\", function () {",
+                    "    pm.expect(reviews).to.be.an('array');",
+                    "});",
+                    "",
+                    "// Проверяем пагинацию - запрашиваем только 1 элемент",
+                    "pm.test(\"Должен вернуться только один отзыв (size=1)\", function () {",
+                    "    pm.expect(reviews.length).to.be.at.most(1);",
+                    "});"
+                ]
+            }
+        }
+    ],
+    "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+            "raw": "{{baseUrl}}/admin/reviews?ids={{reviewIds}}&from=0&size=1",
+            "protocol": "http",
+            "host": [
+                "localhost"
+            ],
+            "port": "8080",
+            "path": [
+                "admin",
+                "reviews"
+            ],
+            "query": [
+                {
+                    "key": "ids",
+                    "value": "{{reviewIds}}"
+                },
+                {
+                    "key": "from",
+                    "value": "0"
+                },
+                {
+                    "key": "size",
+                    "value": "1"
+                }
+            ]
+        }
+    }
+},
+{
+    "name": "Тест 6: Получение рейтинга события и организатора",
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "const main = async () => {",
+                    "    const api = new API(pm);",
+                    "    const testData = TestData;",
+                    "",
+                    "    try {",
+                    "        // 1. Создаём организатора события",
+                    "        const organizer = await api.addUser(testData.getUser());",
+                    "",
+                    "        // 2. Создаём категорию",
+                    "        const category = await api.addCategory(testData.getCategory());",
+                    "",
+                    "        // 3. Создаём событие — статус PENDING",
+                    "        let event = await api.createEvent(organizer.id, testData.getEvent(category.id));",
+                    "",
+                    "        // 4. Администратор публикует событие — статус PUBLISHED",
+                    "        event = await api.publishEvent(event.id);",
+                    "",
+                    "        // 5. Создаём двух участников (кто будет оставлять отзывы)",
+                    "        const participant1 = await api.addUser(testData.getUser());",
+                    "        const participant2 = await api.addUser(testData.getUser());",
+                    "",
+                    "        // 6. Участники подают заявки на участие",
+                    "        const request1 = await api.publishParticipationRequest(event.id, participant1.id);",
+                    "        const request2 = await api.publishParticipationRequest(event.id, participant2.id);",
+                    "",
+                    "        // 7. Администратор завершает событие — isFinished = true",
+                    "        await api.finishEvent(event.id);",
+                    "",
+                    "        // 8. Администратор подтверждает факт участия",
+                    "        await api.confirmAttendance(request1.id);",
+                    "        await api.confirmAttendance(request2.id);",
+                    "",
+                    "        // 9. Участники создают отзывы с разными рейтингами",
+                    "        const reviewData1 = {",
+                    "            eventId: event.id,",
+                    "            rating: 5,",
+                    "            comment: 'Отличное событие! Всё понравилось.'",
+                    "        };",
+                    "        const reviewData2 = {",
+                    "            eventId: event.id,",
+                    "            rating: 4,",
+                    "            comment: 'Хорошее событие, но есть небольшие недочёты.'",
+                    "        };",
+                    "        await api.createReview(participant1.id, reviewData1);",
+                    "        await api.createReview(participant2.id, reviewData2);",
+                    "",
+                    "        pm.collectionVariables.set('eventId', event.id);",
+                    "        pm.collectionVariables.set('organizerId', organizer.id);",
+                    "",
+                    "    } catch (err) {",
+                    "        console.error(\"Ошибка в prerequest:\", err);",
+                    "        throw err;",
+                    "    }",
+                    "};",
+                    "",
+                    "const interval = setInterval(() => {}, 1000);",
+                    "",
+                    "setTimeout(async () => {",
+                    "    try {",
+                    "        await main();",
+                    "    } catch (e) {",
+                    "        console.error(e);",
+                    "    } finally {",
+                    "        clearInterval(interval);",
+                    "    }",
+                    "}, 100);"
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Проверяем, что запрос выполнен успешно",
+                    "pm.test(\"Запрос на получение рейтинга должен вернуть статус 200\", function () {",
+                    "    pm.expect(pm.response.code).to.equal(200);",
+                    "});",
+                    "",
+                    "const rating = pm.response.json();",
+                    "",
+                    "pm.test(\"Рейтинг должен содержать все необходимые поля\", function () {",
+                    "    pm.expect(rating).to.have.property('eventId');",
+                    "    pm.expect(rating).to.have.property('ratingEvent');",
+                    "    pm.expect(rating).to.have.property('totalEventReviews');",
+                    "    pm.expect(rating).to.have.property('userId');",
+                    "    pm.expect(rating).to.have.property('ratingOrganizer');",
+                    "    pm.expect(rating).to.have.property('totalEventsOrganizerReviews');",
+                    "});",
+                    "",
+                    "pm.test(\"eventId должен совпадать с созданным событием\", function () {",
+                    "    pm.expect(rating.eventId).to.eql(pm.collectionVariables.get('eventId'));",
+                    "});",
+                    "",
+                    "pm.test(\"userId должен совпадать с организатором\", function () {",
+                    "    pm.expect(rating.userId).to.eql(pm.collectionVariables.get('organizerId'));",
+                    "});",
+                    "",
+                    "pm.test(\"Рейтинг события должен быть 4.5 (среднее между 4 и 5)\", function () {",
+                    "    pm.expect(parseFloat(rating.ratingEvent)).to.equal(4.5);",
+                    "});",
+                    "",
+                    "pm.test(\"Рейтинг организатора должен быть 4.5 (среднее между 4 и 5)\", function () {",
+                    "    pm.expect(parseFloat(rating.ratingOrganizer)).to.equal(4.5);",
+                    "});",
+                    "",
+                    "pm.test(\"Количество отзывов на событие должно быть 2\", function () {",
+                    "    pm.expect(rating.totalEventReviews).to.eql(2);",
+                    "});",
+                    "",
+                    "pm.test(\"Количество отзывов на события организатора должно быть 2\", function () {",
+                    "    pm.expect(rating.totalEventsOrganizerReviews).to.eql(2);",
+                    "});"
+                ]
+            }
+        }
+    ],
+    "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+            "raw": "{{baseUrl}}/reviews/rating/{{eventId}}",
+            "protocol": "http",
+            "host": [
+                "localhost"
+            ],
+            "port": "8080",
+            "path": [
+                "reviews",
+                "rating",
+                "{{eventId}}"
+            ]
+        }
+    }
+} 
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "API = class {",
+          "    constructor(postman, verbose = false, baseUrl = \"http://localhost:8080\") {",
+          "        this.baseUrl = baseUrl;",
+          "        this.pm = postman;",
+          "        this._verbose = verbose;",
+          "    }",
+          "",
+          "    async addUser(user, verbose = null) {",
+          "        return this.post(\"/admin/users\", user, \"Ошибка при добавлении пользователя: \", verbose);",
+          "    }",
+          "",
+          "    async addCategory(category, verbose = null) {",
+          "        return this.post(\"/admin/categories\", category, \"Ошибка при добавлении категории: \", verbose);",
+          "    }",
+          "",
+          "    async createEvent(userId, eventDto, verbose = null) {",
+          "        return this.post(`/users/${userId}/events`, eventDto, \"Ошибка при создании события: \", verbose);",
+          "    }",
+          "",
+          "    async publishEvent(eventId, verbose = null) {",
+          "        return this.patch(`/admin/events/${eventId}`, { stateAction: \"PUBLISH_EVENT\" }, \"Ошибка при публикации события: \", verbose);",
+          "    }",
+          "",
+          "    async finishEvent(eventId, verbose = null) {",
+          "        return this.post(`/admin/events/${eventId}/finish`, {}, \"Ошибка при завершении события: \", verbose);",
+          "    }",
+          "",
+          "    async publishParticipationRequest(eventId, userId, verbose = null) {",
+          "        return this.post(`/users/${userId}/requests?eventId=${eventId}`, null, \"Ошибка при подаче заявки на участие: \", verbose);",
+          "    }",
+          "",
+          "    async confirmAttendance(requestId, verbose = null) {",
+          "        return this.post(`/admin/reviews/confirm/${requestId}`, {}, \"Ошибка при подтверждении участия: \", verbose);",
+          "    }",
+          "",
+          "    async createReview(userId, reviewData, verbose = null) {",
+          "        return this.post(`/private/reviews/${userId}`, reviewData, \"Ошибка при создании отзыва: \", verbose);",
+          "    }",
+          "",
+          "    async updateReview(userId, reviewId, reviewData, verbose = null) {",
+          "        return this.patch(`/private/reviews/${userId}/${reviewId}`, reviewData, \"Ошибка при обновлении отзыва: \", verbose);",
+          "    }",
+          "",
+          "    async post(path, body, errorText = \"Ошибка POST: \", verbose = null) {",
+          "        return this.sendRequest(\"POST\", path, body, errorText, verbose);",
+          "    }",
+          "",
+          "    async patch(path, body = null, errorText = \"Ошибка PATCH: \", verbose = null) {",
+          "        return this.sendRequest(\"PATCH\", path, body, errorText, verbose);",
+          "    }",
+          "",
+          "    async sendRequest(method, path, body = null, errorText = \"Ошибка запроса: \", verbose = null) {",
+          "        return new Promise((resolve, reject) => {",
+          "            verbose = verbose == null ? this._verbose : verbose;",
+          "            const request = {",
+          "                url: this.baseUrl + path,",
+          "                method: method,",
+          "                body: body == null ? \"\" : JSON.stringify(body),",
+          "                header: { \"Content-Type\": \"application/json\" },",
+          "            };",
+          "",
+          "            if (verbose) {",
+          "                console.log(\"[DEBUG] Отправляю запрос:\", request);",
+          "            }",
+          "",
+          "            this.pm.sendRequest(request, (error, response) => {",
+          "                if (error || (response.code < 200 || response.code >= 400)) {",
+          "                    const errMessage = error ? error : (response.text ? response.text() : 'No response body');",
+          "                    console.error(\"[ERROR]\", errorText, errMessage);",
+          "                    reject(new Error(errorText + errMessage));",
+          "                    return;",
+          "                }",
+          "",
+          "                let responseBody;",
+          "                try {",
+          "                    responseBody = response.json();",
+          "                } catch (e) {",
+          "                    responseBody = response.text();",
+          "                    if (!responseBody || responseBody.trim() === \"\") {",
+          "                        reject(new Error('Отправлено пустое тело ответа'));",
+          "                        return;",
+          "                    }",
+          "                    reject(new Error('Ожидался JSON, но получен текст: ' + responseBody));",
+          "                    return;",
+          "                }",
+          "",
+          "                if (verbose) {",
+          "                    console.log(\"[SUCCESS]\", response.code, responseBody);",
+          "                }",
+          "",
+          "                resolve(responseBody);",
+          "            });",
+          "        });",
+          "    }",
+          "};",
+          "",
+          "TestData = class {",
+          "    static getUser() {",
+          "        return {",
+          "            name: pm.variables.replaceIn('{{$randomFullName}}'),",
+          "            email: pm.variables.replaceIn('{{$randomEmail}}')",
+          "        };",
+          "    }",
+          "",
+          "    static getCategory() {",
+          "        return {",
+          "            name: pm.variables.replaceIn('{{$randomWord}}') + Math.floor(Math.random() * 10000).toString()",
+          "        };",
+          "    }",
+          "",
+          "    static getEvent(categoryId) {",
+          "        let annotation = pm.variables.replaceIn('{{$randomLoremParagraphs}}');",
+          "        while (annotation.length < 20) annotation += \" \" + pm.variables.replaceIn('{{$randomLoremSentence}}');",
+          "        annotation = annotation.substring(0, 500);",
+          "",
+          "        let description = pm.variables.replaceIn('{{$randomLoremParagraphs}}');",
+          "        while (description.length < 20) description += \" \" + pm.variables.replaceIn('{{$randomLoremSentence}}');",
+          "        description = description.substring(0, 2000);",
+          "",
+          "        let title = pm.variables.replaceIn('{{$randomLoremSentence}}').substring(0, 120);",
+          "        if (title.length < 3) title = \"Event Title\";",
+          "",
+          "        return {",
+          "            annotation: annotation,",
+          "            category: categoryId,",
+          "            description: description,",
+          "            eventDate: this.getFutureDateTime(),",
+          "            location: {",
+          "                lat: parseFloat(pm.variables.replaceIn('{{$randomLatitude}}')),",
+          "                lon: parseFloat(pm.variables.replaceIn('{{$randomLongitude}}')),",
+          "            },",
+          "            paid: false,",
+          "            participantLimit: 0,",
+          "            requestModeration: false,",
+          "            title: title,",
+          "        };",
+          "    }",
+          "",
+          "    static getFutureDateTime(hourShift = 2, minuteShift = 0) {",
+          "        let moment = require('moment');",
+          "        let m = moment();",
+          "        m.add(hourShift, 'hour');",
+          "        m.add(minuteShift, 'minute');",
+          "        return m.format('YYYY-MM-DD HH:mm:ss');",
+          "    }",
+          "};"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ]
+}

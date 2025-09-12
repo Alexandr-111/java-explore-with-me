@@ -4,6 +4,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import ru.practicum.event.EventState;
 import ru.practicum.model.Event;
 
@@ -17,4 +19,7 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
     Optional<Event> findByIdAndInitiatorId(Long eventId, Long userId);
 
     Optional<Event> findByIdAndState(Long id, EventState state);
+
+    @Query("SELECT e FROM Event e JOIN FETCH e.initiator WHERE e.id = :id")
+    Optional<Event> findByIdWithInitiator(@Param("id") Long id);
 }
