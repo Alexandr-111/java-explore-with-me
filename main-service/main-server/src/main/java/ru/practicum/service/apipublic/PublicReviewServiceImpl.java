@@ -43,7 +43,7 @@ public class PublicReviewServiceImpl implements PublicReviewService {
             throw new BadInputException("Отзывы недоступны — это событие ещё не завершено");
         }
 
-        Pageable pageable = PageRequest.of(0, Math.min(size, 100));
+        Pageable pageable = PageRequest.of(0, Math.min(size, 30));
         List<EventReview> reviews = eventReviewRepository.findLastPublicReviews(eventId, pageable);
 
         return reviews.stream()

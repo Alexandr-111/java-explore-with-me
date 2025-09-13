@@ -29,7 +29,7 @@ public class PublicReviewController {
     @GetMapping("/{eventId}")
     public ResponseEntity<List<EventReviewPublicDto>> getLastReviews(
             @Positive @PathVariable Long eventId,
-            @Min(1) @Max(100) @RequestParam(defaultValue = "10") Integer size) {
+            @Min(1) @Max(30) @RequestParam(defaultValue = "10") Integer size) {
         log.debug("PublicReviewController. Получение списка последних отзывов на событие {}", eventId);
         return client.getLastReviews(eventId, size);
     }
