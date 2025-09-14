@@ -1,6 +1,7 @@
 package ru.practicum.service.apiprivate;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -41,6 +42,7 @@ import static ru.practicum.mapper.EventMapper.toEventShortDto;
 import static ru.practicum.mapper.ParticipationRequestMapper.toDto;
 import static ru.practicum.mapper.ParticipationRequestMapper.toDtoList;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -225,6 +227,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
         List<ParticipationRequest> requestsToUpdate = requestRepository.findAllByIdInAndEventIdAndStatus(
                 dto.getRequestIds(), eventId, ParticipationRequestStatus.PENDING);
+
 
         if (requestsToUpdate.size() != dto.getRequestIds().size()) {
             throw new ConflictException("Некоторые запросы не в статусе PENDING или были не найдены");
